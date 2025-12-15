@@ -1,6 +1,6 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 
 export default function Header() {
     return (
@@ -8,7 +8,18 @@ export default function Header() {
             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-primary bg-clip-text text-transparent">
                 Gemini Workout
             </h1>
-            <UserButton afterSignOutUrl="/sign-in" />
+            <div>
+                <SignedIn>
+                    <UserButton afterSignOutUrl="/" />
+                </SignedIn>
+                <SignedOut>
+                    <SignInButton mode="modal">
+                        <button className="bg-primary text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-primary/90 transition-colors">
+                            Sign In
+                        </button>
+                    </SignInButton>
+                </SignedOut>
+            </div>
         </header>
     );
 }

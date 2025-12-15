@@ -1,6 +1,8 @@
 import WorkoutSession from "@/components/WorkoutSession";
 import { startNewWorkout } from "@/app/actions/workout";
 
+export const dynamic = 'force-dynamic';
+
 // To handle searchParams in Next.js 14 Page
 export default async function WorkoutPage({
     searchParams,

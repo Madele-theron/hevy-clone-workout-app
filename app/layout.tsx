@@ -5,6 +5,8 @@ import MainLayout from "@/components/MainLayout";
 import { ClerkProvider } from "@clerk/nextjs";
 import Header from "@/components/Header";
 
+export const dynamic = 'force-dynamic';
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
