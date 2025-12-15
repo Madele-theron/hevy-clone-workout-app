@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import RestTimer from "./RestTimer";
 import Button from "./Button";
 import { Plus, Check, Play, Square, MessageSquare, X, Trash2 } from "lucide-react";
+import StopwatchInput from "./StopwatchInput";
 import { useRouter } from "next/navigation";
 import { useWorkout } from "@/contexts/WorkoutContext";
 
@@ -97,7 +98,7 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                         <div className="col-span-1">Set</div>
                         <div className="col-span-3">Prev</div>
                         <div className="col-span-3">kg</div>
-                        <div className="col-span-3">Reps</div>
+                        <div className="col-span-3">{activeEx.type === 'duration' ? 'Time' : 'Reps'}</div>
                         <div className="col-span-2">Actions</div>
                     </div>
 
@@ -126,15 +127,22 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                                     />
                                 </div>
                                 <div className="col-span-3">
-                                    <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={set.reps}
-                                        onChange={(e) =>
-                                            updateSetLocal(exIndex, setIndex, "reps", e.target.value)
-                                        }
-                                        className="w-full h-11 min-h-[44px] bg-gray-800 rounded text-center text-lg font-bold text-white focus:ring-2 focus:ring-primary outline-none"
-                                    />
+                                    {activeEx.type === 'duration' ? (
+                                        <StopwatchInput
+                                            value={set.reps}
+                                            onChange={(val) => updateSetLocal(exIndex, setIndex, "reps", val)}
+                                        />
+                                    ) : (
+                                        <input
+                                            type="number"
+                                            placeholder="0"
+                                            value={set.reps}
+                                            onChange={(e) =>
+                                                updateSetLocal(exIndex, setIndex, "reps", e.target.value)
+                                            }
+                                            className="w-full h-11 min-h-[44px] bg-gray-800 rounded text-center text-lg font-bold text-white focus:ring-2 focus:ring-primary outline-none"
+                                        />
+                                    )}
                                 </div>
                                 <div className="col-span-2 flex gap-1 justify-end">
                                     <button

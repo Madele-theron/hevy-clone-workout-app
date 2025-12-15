@@ -113,11 +113,11 @@ export async function logSet(sessionId: number, exerciseId: number, data: SetDat
         userId,
         sessionId,
         exerciseId,
-        setNumber: 0,
-        reps: data.reps,
-        weightKg: data.weightKg,
-        isCompleted: data.isCompleted,
-        note: data.note, // Added note
+        setNumber: setData.setNumber,
+        weightKg: parseFloat(setData.weight || "0") || 0,
+        reps: parseInt(setData.reps?.toString().replace(/s/gi, "") || "0") || 0,
+        isCompleted: true,
+        note: setData.note || null,
     });
 
     revalidatePath('/workout');

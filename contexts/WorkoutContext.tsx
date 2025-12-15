@@ -9,6 +9,7 @@ export type Exercise = {
     id: number;
     name: string;
     type: string;
+    type: string; // "strength" | "duration"
 };
 
 export type WorkoutSet = {
@@ -20,11 +21,12 @@ export type WorkoutSet = {
 };
 
 export type ActiveExercise = {
-    id: string;
+    id: number; // component-level id (random)
     exerciseId: number;
     name: string;
+    type: string;
     sets: WorkoutSet[];
-    previousStats?: { weight: number | null; reps: number | null };
+    previousStats?: { weight: number; reps: number } | null;
 };
 
 type WorkoutContextType = {
@@ -199,14 +201,14 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         if (!exercise) return;
 
         const newActiveExercise: ActiveExercise = {
-            id: crypto.randomUUID(),
-            exerciseId: exercise.id,
+            id: Date.now(),
+            exerciseId,
             name: exercise.name,
+            type: exercise.type || "strength",
             sets: [
                 { setNumber: 1, weight: "", reps: "", isCompleted: false },
             ],
         };
-
         setActiveExercises(prev => [...prev, newActiveExercise]);
     };
 
