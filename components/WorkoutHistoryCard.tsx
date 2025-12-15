@@ -69,7 +69,7 @@ export default function WorkoutHistoryCard({ session }: { session: WorkoutHistor
 
             {session.notes && (
                 <div className="bg-gray-800/50 p-2 rounded-lg mb-4 text-sm text-gray-300 italic">
-                    "{session.notes}"
+                    &quot;{session.notes}&quot;
                 </div>
             )}
 
