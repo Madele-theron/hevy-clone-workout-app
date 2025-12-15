@@ -38,59 +38,64 @@ export async function getPreviousExerciseStats(exerciseId: number) {
 }
 
 export async function startNewWorkout(routineId?: number) {
-    const { userId } = await auth();
-    if (!userId) throw new Error("Unauthorized");
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
 
-    // 1. Create Session
-    const [session] = await db
-        .insert(workoutSessions)
-        .values({
-            userId,
-            startTime: new Date(),
-            notes: routineId ? "Started from Routine" : undefined, // Could fetch routine name if desired
-        })
-        .returning({ id: workoutSessions.id });
+        // 1. Create Session
+        const [session] = await db
+            .insert(workoutSessions)
+            .values({
+                userId,
+                startTime: new Date(),
+                notes: routineId ? "Started from Routine" : undefined, // Could fetch routine name if desired
+            })
+            .returning({ id: workoutSessions.id });
 
-    // 2. If Routine provided, copy exercises and targets
-    if (routineId) {
-        const routine = await db.query.routines.findFirst({
-            where: and(
-                eq(routines.id, routineId),
-                eq(routines.userId, userId)
-            ),
-            with: {
-                routineExercises: {
-                    orderBy: (re, { asc }) => [asc(re.order)]
+        // 2. If Routine provided, copy exercises and targets
+        if (routineId) {
+            const routine = await db.query.routines.findFirst({
+                where: and(
+                    eq(routines.id, routineId),
+                    eq(routines.userId, userId)
+                ),
+                with: {
+                    routineExercises: {
+                        orderBy: (re, { asc }) => [asc(re.order)]
+                    }
                 }
-            }
-        });
+            });
 
-        if (routine && routine.routineExercises.length > 0) {
-            // For each routine exercise, add 'targetSets' number of empty sets
-            const setsToInsert = [];
+            if (routine && routine.routineExercises.length > 0) {
+                // For each routine exercise, add 'targetSets' number of empty sets
+                const setsToInsert = [];
 
-            for (const re of routine.routineExercises) {
-                for (let i = 1; i <= re.targetSets; i++) {
-                    setsToInsert.push({
-                        userId,
-                        sessionId: session.id,
-                        exerciseId: re.exerciseId,
-                        setNumber: i,
-                        reps: re.targetReps,
-                        weightKg: re.targetWeight || 0, // New: Copy target weight, default to 0
-                        isCompleted: false
-                    });
+                for (const re of routine.routineExercises) {
+                    for (let i = 1; i <= re.targetSets; i++) {
+                        setsToInsert.push({
+                            userId,
+                            sessionId: session.id,
+                            exerciseId: re.exerciseId,
+                            setNumber: i,
+                            reps: re.targetReps,
+                            weightKg: re.targetWeight || 0, // New: Copy target weight, default to 0
+                            isCompleted: false
+                        });
+                    }
                 }
-            }
 
-            if (setsToInsert.length > 0) {
-                await db.insert(sets).values(setsToInsert);
+                if (setsToInsert.length > 0) {
+                    await db.insert(sets).values(setsToInsert);
+                }
             }
         }
-    }
 
-    revalidatePath('/workout');
-    return session.id;
+        revalidatePath('/workout');
+        return session.id;
+    } catch (error) {
+        console.error("Failed to start new workout:", error);
+        throw error;
+    }
 }
 
 export type SetData = {
