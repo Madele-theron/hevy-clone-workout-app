@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Gemini Workout",
+  title: "IronPath",
   description: "Track your workouts",
   manifest: "/manifest.json",
 };
