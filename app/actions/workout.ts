@@ -326,3 +326,17 @@ export async function deleteExercise(id: number) {
         return { success: false, error: "Failed to delete. Exercise might be in use." };
     }
 }
+export async function deleteSet(sessionId: number, exerciseId: number, setNumber: number) {
+    const userId = await getUserId();
+    if (!userId) throw new Error("Unauthorized");
+
+    await db.delete(sets)
+        .where(and(
+            eq(sets.userId, userId),
+            eq(sets.sessionId, sessionId),
+            eq(sets.exerciseId, exerciseId),
+            eq(sets.setNumber, setNumber)
+        ));
+
+    revalidatePath('/workout');
+}

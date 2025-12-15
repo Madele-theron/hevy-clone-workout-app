@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
-import { getExercises, startNewWorkout, logSet, finishWorkout, updateSet, getSessionDetails, getPreviousExerciseStats } from "@/app/actions/workout";
+import { getExercises, startNewWorkout, logSet, finishWorkout, updateSet, getSessionDetails, getPreviousExerciseStats, deleteSet } from "@/app/actions/workout";
 import { useRouter } from "next/navigation";
 
 // Types
@@ -40,6 +40,7 @@ type WorkoutContextType = {
     updateSetLocal: (exerciseIndex: number, setIndex: number, field: keyof WorkoutSet, value: string | boolean) => void;
     completeSet: (exerciseIndex: number, setIndex: number) => Promise<void>;
     saveNote: (exerciseIndex: number, setIndex: number, note: string) => Promise<void>;
+    removeSet: (exerciseIndex: number, setIndex: number) => Promise<void>;
     finishCurrentWorkout: () => Promise<void>;
     setTimerOpen: (open: boolean) => void;
     resumeWorkout: (id: number) => Promise<void>;
@@ -286,6 +287,40 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
                     note: note
                 });
             } catch (e) { console.error(e) }
+        }
+    };
+
+    const removeSet = async (exerciseIndex: number, setIndex: number) => {
+        const updated = [...activeExercises];
+        const exercise = updated[exerciseIndex];
+        const set = exercise.sets[setIndex];
+
+        // Remove from UI
+        exercise.sets.splice(setIndex, 1);
+        setActiveExercises(updated);
+
+        // Remove from DB if possible
+        // We need set.id or strict (session, exercise, setNumber) match
+        // Since we didn't store ID in WorkoutSet yet, we will fallback to setNumber matching
+        // But be warned of duplicate setNumbers if bug exists.
+        if (sessionId) {
+            try {
+                // If we have an ID (future proof), invoke delete with ID
+                // For now, we use server action with sessionId, exerciseId, setNumber
+                // But we must assume 'setNumber' in DB matches what we had in UI state.
+                const numberToDelete = set.setNumber;
+
+                // We need a deleteSet action. I haven't created it yet. 
+                // I will add 'deleteSet' to actions/workout.ts later? 
+                // Or I can use 'updateSet' with a delete flag? No.
+                // I will use a direct server action call here if I can import it?
+                // I need to add `deleteSet` to imports.
+
+                // Wait, I planned to add `deleteSet` to actions.
+                await deleteSet(sessionId, exercise.exerciseId, numberToDelete);
+            } catch (e) {
+                console.error("Failed to delete set from DB", e);
+            }
         }
     };
 

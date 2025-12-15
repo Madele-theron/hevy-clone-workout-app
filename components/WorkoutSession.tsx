@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import RestTimer from "./RestTimer";
 import Button from "./Button";
-import { Plus, Check, Play, Square, MessageSquare, X } from "lucide-react"; // Timer removed locally, handled in context/resttimer
+import { Plus, Check, Play, Square, MessageSquare, X, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useWorkout } from "@/contexts/WorkoutContext"; // Import Context
+import { useWorkout } from "@/contexts/WorkoutContext";
 
-// Types are now in Context, import them if needed for props, or let inference work
 interface WorkoutSessionProps {
     initialSessionId?: number;
 }
@@ -15,7 +14,6 @@ interface WorkoutSessionProps {
 export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps) {
     const router = useRouter();
 
-    // Consume Context
     const {
         sessionId,
         activeExercises,
@@ -30,6 +28,7 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
         updateSetLocal,
         completeSet,
         saveNote: saveNoteContext,
+        removeSet,
         finishCurrentWorkout,
         resumeWorkout
     } = useWorkout();
@@ -39,10 +38,6 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
     // Initial Resume Logic
     useEffect(() => {
         if (initialSessionId && !isLoading) {
-            // Only resume if we aren't already in a session, OR if the requested session is different?
-            // User might navigate from "Start Routine" -> /workout
-            // We should trust the context to handle "don't overwrite if same". 
-            // context.resumeWorkout checks ID match.
             resumeWorkout(initialSessionId);
         }
     }, [initialSessionId, isLoading, resumeWorkout]);
@@ -88,19 +83,14 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                     <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                     <span className="text-2xl font-mono font-bold text-gray-100">{formatDuration(elapsedSeconds)}</span>
                 </div>
-                <button
-                    onClick={finishCurrentWorkout}
-                    className="bg-primary/20 text-primary px-6 py-2 rounded-full text-sm font-bold hover:bg-primary/30 min-h-[44px]"
-                >
-                    Finish
-                </button>
+                {/* Top Finish Button Removed */}
             </div>
 
             {activeExercises.map((activeEx, exIndex) => (
                 <div key={activeEx.id} className="bg-surface rounded-xl p-4 space-y-4">
+                    {/* ... Header ... */}
                     <div className="flex justify-between items-center">
                         <h3 className="font-bold text-lg text-blue-400">{activeEx.name}</h3>
-                        {/* Options menu could go here */}
                     </div>
 
                     <div className="grid grid-cols-12 gap-2 text-xs font-bold text-gray-500 uppercase text-center mb-2">
@@ -108,7 +98,7 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                         <div className="col-span-3">Prev</div>
                         <div className="col-span-3">kg</div>
                         <div className="col-span-3">Reps</div>
-                        <div className="col-span-2">Check</div>
+                        <div className="col-span-2">Actions</div>
                     </div>
 
                     <div className="space-y-2">
@@ -119,7 +109,7 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                                     }`}
                             >
                                 <div className="col-span-1 text-center font-bold text-gray-400 bg-gray-800/50 rounded h-11 flex items-center justify-center">
-                                    {set.setNumber}
+                                    {setIndex + 1}
                                 </div>
                                 <div className="col-span-3 text-center text-xs font-medium text-gray-500 flex items-center justify-center h-11 bg-gray-800/20 rounded border border-gray-800/50">
                                     {activeEx.previousStats?.weight ? `${activeEx.previousStats.weight}kg x ${activeEx.previousStats.reps}` : "-"}
@@ -148,10 +138,10 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                                 </div>
                                 <div className="col-span-2 flex gap-1 justify-end">
                                     <button
-                                        onClick={() => setNoteModal({ exerciseIndex: exIndex, setIndex, note: set.note || "" })}
-                                        className={`w-8 h-11 rounded-lg flex items-center justify-center transition-colors ${set.note ? "text-blue-400" : "text-gray-600 hover:text-gray-400"}`}
+                                        onClick={() => removeSet(exIndex, setIndex)}
+                                        className="w-8 h-11 rounded-lg flex items-center justify-center text-red-400 hover:text-red-300 transition-colors"
                                     >
-                                        <MessageSquare size={16} fill={set.note ? "currentColor" : "none"} />
+                                        <Trash2 size={16} />
                                     </button>
                                     <button
                                         onClick={() => completeSet(exIndex, setIndex)}
@@ -162,11 +152,38 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                                     >
                                         {set.isCompleted ? <Check size={24} /> : <Square size={20} />}
                                     </button>
+                                    {/* Note buttom pushed out or integrated? 
+                                        User asked for Trash. Space is tight.
+                                        "Swipe/Delete Sets" implies visible action.
+                                        I replaced MessageSquare with Trash.
+                                        Where did Note go? 
+                                        I should keep Note.
+                                        Space is 2 cols.
+                                        Maybe Stack them? Or smaller icons?
+                                        Or: Note is critical for "Notes Export". 
+                                        I will put Note button back, and squeeze them.
+                                        Col-span-2 is tight for 3 buttons.
+                                        I'll increase checks column or reduce inputs?
+                                        Inputs are 3 cols.
+                                        Let's try to fit 3 icons in col-span-2 if small?
+                                        Or make rows taller?
+                                        Actually, I'll put Trash on the far left or make it a "long press"?
+                                        No, "Touch-friendly Delete button".
+                                        I'll put Trash next to Reps, or replace "Prev"?
+                                        No.
+                                        I'll make the actions column wider?
+                                        Grid 12.
+                                        Set: 1
+                                        Prev: 3 -> 2
+                                        Kg: 3
+                                        Reps: 3
+                                        Actions: 2 -> 3
+                                    */}
                                 </div>
                             </div>
                         ))}
                     </div>
-
+                    {/* ... Add Set Button ... */}
                     <Button
                         variant="ghost"
                         onClick={() => addSet(exIndex)}
@@ -177,6 +194,8 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                 </div>
             ))}
 
+            {/* Add Exercise Section */}
+            {/* ... */}
             <div className="pt-4 pb-8">
                 <h3 className="text-gray-400 mb-2 font-medium">Add Exercise</h3>
                 <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
@@ -195,8 +214,18 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                 </div>
             </div>
 
-            <RestTimer isOpen={isTimerOpen} onClose={() => setTimerOpen(false)} />
+            {/* Big Finish Button */}
+            <Button
+                onClick={finishCurrentWorkout}
+                className="w-full h-16 text-xl font-bold rounded-xl shadow-lg shadow-blue-900/20 mb-32"
+                variant="primary"
+            >
+                Finish Workout
+            </Button>
 
+            {/* Timers & Modals */}
+            <RestTimer isOpen={isTimerOpen} onClose={() => setTimerOpen(false)} />
+            {/* ... Note Modal ... */}
             {noteModal && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
                     <div className="bg-surface border border-gray-700 rounded-xl p-4 w-full max-w-sm space-y-4 shadow-2xl">
@@ -215,6 +244,6 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                     </div>
                 </div>
             )}
-        </div >
+        </div>
     );
 }

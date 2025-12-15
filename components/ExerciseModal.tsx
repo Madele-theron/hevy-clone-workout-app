@@ -87,7 +87,7 @@ export default function ExerciseModal({ isOpen, onClose, exercise, onSave, onDel
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Bench Press"
-                            className="w-full bg-gray-800 p-4 rounded-xl text-white font-bold text-lg focus:ring-2 focus:ring-primary outline-none"
+                            className="w-full bg-gray-800 p-3 rounded-lg text-white font-bold text-sm focus:ring-2 focus:ring-primary outline-none"
                             autoFocus
                         />
                     </div>
@@ -98,7 +98,7 @@ export default function ExerciseModal({ isOpen, onClose, exercise, onSave, onDel
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="e.g. Keep elbows tucked..."
-                            className="w-full bg-gray-800 p-4 rounded-xl text-white h-32 focus:ring-2 focus:ring-primary outline-none resize-none leading-relaxed"
+                            className="w-full bg-gray-800 p-3 rounded-lg text-white h-24 text-sm focus:ring-2 focus:ring-primary outline-none resize-none leading-relaxed"
                         />
                     </div>
                 </div>
