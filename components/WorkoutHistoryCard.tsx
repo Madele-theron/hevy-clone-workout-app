@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { WorkoutHistoryItem, deleteWorkout } from "@/app/actions/workout";
-import { Calendar, Clock, Loader2, Play, Trash2 } from "lucide-react";
-import Button from "./Button";
-import Link from "next/link";
+import { Calendar, Clock, Loader2, Trash2 } from "lucide-react";
 
 export default function WorkoutHistoryCard({ session }: { session: WorkoutHistoryItem }) {
     const [isDeleting, setIsDeleting] = useState(false);
@@ -26,9 +24,13 @@ export default function WorkoutHistoryCard({ session }: { session: WorkoutHistor
     const handleDelete = async () => {
         if (confirm("Are you sure you want to delete this workout?")) {
             setIsDeleting(true);
-            await deleteWorkout(session.id);
-            // Router refresh handled by server action revalidatePath
-            setIsDeleting(false);
+            try {
+                await deleteWorkout(session.id);
+            } catch (error) {
+                console.error("Failed to delete workout:", error);
+                setIsDeleting(false); // Only reset if failed, otherwise component usually unmounts/refreshes
+                alert("Failed to delete. Please try again.");
+            }
         }
     };
 
@@ -39,6 +41,7 @@ export default function WorkoutHistoryCard({ session }: { session: WorkoutHistor
                 disabled={isDeleting}
                 className="absolute top-4 right-4 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-2"
                 title="Delete Workout"
+                type="button"
             >
                 {isDeleting ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
             </button>
@@ -56,28 +59,33 @@ export default function WorkoutHistoryCard({ session }: { session: WorkoutHistor
                         <span className="flex items-center gap-1">
                             <Clock size={14} />
                             {formatDuration(session.duration)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                            {Math.round(session.volume || 0)} kg
+                        </span>
                     </div>
                 </div>
+            </div>
 
-                {/* Expanded Details */}
-                {isExpanded && (
-                    <div className="bg-gray-900/50 p-4 border-t border-gray-800 space-y-4 animate-slide-down">
-                        {session.exercises.map((exercise, i) => (
-                            <div key={i}>
-                                <h4 className="text-sm font-bold text-blue-400 mb-2">{exercise.name}</h4>
-                                <div className="space-y-1">
-                                    {exercise.sets.map((set, j) => (
-                                        <div key={j} className="grid grid-cols-3 text-xs text-gray-300 py-1 border-b border-gray-800/50 last:border-0">
-                                            <span className="text-gray-500">Set {set.setNumber}</span>
-                                            <span className="text-center font-mono">{set.weight} kg</span>
-                                            <span className="text-right">{set.reps} reps</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+            {session.notes && (
+                <div className="bg-gray-800/50 p-2 rounded-lg mb-4 text-sm text-gray-300 italic">
+                    "{session.notes}"
+                </div>
+            )}
+
+            <div className="space-y-1">
+                {session.exercises.slice(0, 3).map((ex, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                        <span className="text-gray-300 font-medium">{ex.name}</span>
+                        <span className="text-gray-500">{ex.sets.length} sets</span>
+                    </div>
+                ))}
+                {session.exercises.length > 3 && (
+                    <div className="text-xs text-gray-500 mt-1">
+                        + {session.exercises.length - 3} more exercises
                     </div>
                 )}
             </div>
-            );
+        </div>
+    );
 }

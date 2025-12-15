@@ -99,10 +99,11 @@ export async function startNewWorkout(routineId?: number) {
 }
 
 export type SetData = {
-    reps?: number;
-    weightKg?: number;
+    setNumber: number; // Ensure setNumber is here
+    reps?: number | string;
+    weightKg?: number | string;
     isCompleted: boolean;
-    note?: string; // Added note
+    note?: string;
 };
 
 export async function logSet(sessionId: number, exerciseId: number, data: SetData) {
@@ -113,11 +114,27 @@ export async function logSet(sessionId: number, exerciseId: number, data: SetDat
         userId,
         sessionId,
         exerciseId,
-        setNumber: setData.setNumber,
-        weightKg: parseFloat(setData.weight || "0") || 0,
-        reps: parseInt(setData.reps?.toString().replace(/s/gi, "") || "0") || 0,
+        setNumber: data.setNumber || 0, // Using setNumber from data, assuming strict mode? Wait, SetData type check.
+        weightKg: parseFloat(data.weightKg?.toString() || "0") || 0, // SetData uses weightKg normally? Check type definition.
+        // Wait, look at line 101 definition: 
+        // export type SetData = { reps?: number; weightKg?: number; ... }
+        // BUT my logSet implementation used `setData.reps` as string?
+        // If Type is number, replace function won't exist on number.
+        // I need to update SetData type to allow string input if UI sends string?
+        // UI uses `updateSetLocal` which touches `WorkoutSet` (strings).
+        // But `logSet` action expects `SetData`.
+        // If UI calls `logSet` with strings, the type definition in action needs to match or be lenient.
+        // Current SetData: reps?: number.
+        // UI sends: { ... set } which has reps: string.
+        // So `logSet` argument should basically be `SetData` but allowing strings?
+        // Or I should parse it better.
+        // Let's change SetData type to allow string | number for reps/weightKg?
+        // Or update the call site?
+        // For robustness, I'll update SetData type to `reps: string | number`.
+
+        reps: typeof data.reps === 'string' ? parseInt(data.reps.replace(/s/gi, "")) || 0 : data.reps || 0,
         isCompleted: true,
-        note: setData.note || null,
+        note: data.note || null,
     });
 
     revalidatePath('/workout');
