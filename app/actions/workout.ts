@@ -164,11 +164,23 @@ export async function updateSet(sessionId: number, exerciseId: number, setNumber
     //   For this task: I will duplicate the simple logic:
     //   `updateSet` will try to update a set if it exists (by session/exercise/setNumber).
 
+    // Safe update payload
+    const updatePayload: any = { ...data };
+
+    if (data.reps !== undefined) {
+        updatePayload.reps = typeof data.reps === 'string'
+            ? parseInt(data.reps.replace(/s/gi, "")) || 0
+            : data.reps;
+    }
+
+    if (data.weightKg !== undefined) {
+        updatePayload.weightKg = typeof data.weightKg === 'string'
+            ? parseFloat(data.weightKg) || 0
+            : data.weightKg;
+    }
+
     await db.update(sets)
-        .set({
-            ...data,
-            // If data has note, it updates note.
-        })
+        .set(updatePayload)
         .where(and(
             eq(sets.userId, userId),
             eq(sets.sessionId, sessionId),
