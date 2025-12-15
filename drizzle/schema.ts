@@ -25,6 +25,7 @@ export const exercisesRelations = relations(exercises, ({ many }) => ({
 
 export const workoutSessions = pgTable("workout_sessions", {
     id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(), // Added User Ownership
     startTime: timestamp("start_time").defaultNow().notNull(),
     endTime: timestamp("end_time"),
     duration: integer("duration"), // in seconds
@@ -41,6 +42,7 @@ export const workoutSessionsRelations = relations(
 
 export const sets = pgTable("sets", {
     id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(), // Added User Ownership
     sessionId: integer("session_id")
         .references(() => workoutSessions.id)
         .notNull(),
@@ -70,6 +72,7 @@ export const setsRelations = relations(sets, ({ one }) => ({
 
 export const routines = pgTable("routines", {
     id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
     name: text("name").notNull(),
     notes: text("notes"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -81,6 +84,7 @@ export const routinesRelations = relations(routines, ({ many }) => ({
 
 export const routineExercises = pgTable("routine_exercises", {
     id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(), // Added User Ownership
     routineId: integer("routine_id")
         .references(() => routines.id, { onDelete: "cascade" })
         .notNull(),

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import MainLayout from "@/components/MainLayout";
+import { ClerkProvider } from "@clerk/nextjs";
+import Header from "@/components/Header";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,7 +29,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-background text-white`}>
-        <MainLayout>{children}</MainLayout>
+        <ClerkProvider>
+          {/* Header is global now, or kept inside MainLayout? 
+                User requested Header. MainLayout usually wraps content.
+                Let's put Header above content.
+            */}
+          <Header />
+          <MainLayout>{children}</MainLayout>
+        </ClerkProvider>
       </body>
     </html>
   );

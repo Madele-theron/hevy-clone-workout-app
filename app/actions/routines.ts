@@ -2,8 +2,9 @@
 
 import { db } from "@/lib/db";
 import { routines, routineExercises, exercises } from "@/drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { auth } from "@clerk/nextjs/server";
 
 export type RoutineData = {
     name: string;
@@ -18,10 +19,14 @@ export type RoutineData = {
 };
 
 export async function createRoutine(data: RoutineData) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
     // 1. Create Routine
     const [newRoutine] = await db
         .insert(routines)
         .values({
+            userId,
             name: data.name,
             notes: data.notes,
         })
@@ -30,6 +35,7 @@ export async function createRoutine(data: RoutineData) {
     // 2. Add Exercises
     if (data.exercises.length > 0) {
         const routineExercisesData = data.exercises.map((ex) => ({
+            userId,
             routineId: newRoutine.id,
             exerciseId: ex.exerciseId,
             order: ex.order,
@@ -46,7 +52,11 @@ export async function createRoutine(data: RoutineData) {
 }
 
 export async function getRoutines() {
+    const { userId } = await auth();
+    if (!userId) return [];
+
     const allRoutines = await db.query.routines.findMany({
+        where: eq(routines.userId, userId),
         orderBy: [desc(routines.createdAt)],
         with: {
             routineExercises: {
@@ -61,7 +71,15 @@ export async function getRoutines() {
 }
 
 export async function deleteRoutine(id: number) {
-    await db.delete(routines).where(eq(routines.id, id));
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    await db.delete(routines).where(
+        and(
+            eq(routines.id, id),
+            eq(routines.userId, userId)
+        )
+    );
     revalidatePath("/routines");
     revalidatePath("/workout");
 }

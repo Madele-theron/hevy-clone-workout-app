@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { exercises, sets, workoutSessions, routines, routineExercises } from "@/drizzle/schema";
 import { eq, asc, desc, and, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { auth } from "@clerk/nextjs/server";
 
 export async function getExercises() {
     return await db.select().from(exercises);
@@ -15,11 +16,14 @@ export async function getPreviousExerciseStats(exerciseId: number) {
     // We want the most recent *session* first, then the best set? 
     // Usually "Previous" means what I did last time.
     // Let's filter for isCompleted = true
+    const { userId } = await auth();
+    if (!userId) return null;
 
     const lastSet = await db.query.sets.findFirst({
         where: and(
             eq(sets.exerciseId, exerciseId),
-            eq(sets.isCompleted, true)
+            eq(sets.isCompleted, true),
+            eq(sets.userId, userId)
         ),
         orderBy: [desc(sets.createdAt)], // Most recent by creation
         // Ideally we order by Session Date, but Sets created_at is usually fine proxy
@@ -34,10 +38,14 @@ export async function getPreviousExerciseStats(exerciseId: number) {
 }
 
 export async function startNewWorkout(routineId?: number) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
     // 1. Create Session
     const [session] = await db
         .insert(workoutSessions)
         .values({
+            userId,
             startTime: new Date(),
             notes: routineId ? "Started from Routine" : undefined, // Could fetch routine name if desired
         })
@@ -46,7 +54,10 @@ export async function startNewWorkout(routineId?: number) {
     // 2. If Routine provided, copy exercises and targets
     if (routineId) {
         const routine = await db.query.routines.findFirst({
-            where: eq(routines.id, routineId),
+            where: and(
+                eq(routines.id, routineId),
+                eq(routines.userId, userId)
+            ),
             with: {
                 routineExercises: {
                     orderBy: (re, { asc }) => [asc(re.order)]
@@ -61,6 +72,7 @@ export async function startNewWorkout(routineId?: number) {
             for (const re of routine.routineExercises) {
                 for (let i = 1; i <= re.targetSets; i++) {
                     setsToInsert.push({
+                        userId,
                         sessionId: session.id,
                         exerciseId: re.exerciseId,
                         setNumber: i,
@@ -88,7 +100,11 @@ export type SetData = {
 };
 
 export async function logSet(sessionId: number, exerciseId: number, data: SetData) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
     await db.insert(sets).values({
+        userId,
         sessionId,
         exerciseId,
         setNumber: 0, // Placeholder, logic to determine set number can be added later
@@ -101,13 +117,19 @@ export async function logSet(sessionId: number, exerciseId: number, data: SetDat
 }
 
 export async function finishWorkout(sessionId: number, clientDuration?: number) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
     const now = new Date();
 
     // Fetch start time to calculate duration fallback
     const [session] = await db
         .select({ startTime: workoutSessions.startTime })
         .from(workoutSessions)
-        .where(eq(workoutSessions.id, sessionId));
+        .where(and(
+            eq(workoutSessions.id, sessionId),
+            eq(workoutSessions.userId, userId)
+        ));
 
     if (!session) throw new Error("Session not found");
 
@@ -119,7 +141,10 @@ export async function finishWorkout(sessionId: number, clientDuration?: number) 
             endTime: now,
             duration,
         })
-        .where(eq(workoutSessions.id, sessionId));
+        .where(and(
+            eq(workoutSessions.id, sessionId),
+            eq(workoutSessions.userId, userId)
+        ));
 
     revalidatePath('/history');
     revalidatePath('/workout');
@@ -143,13 +168,21 @@ export type WorkoutHistoryItem = {
 };
 
 export async function getWorkoutHistory(): Promise<WorkoutHistoryItem[]> {
+    const { userId } = await auth();
+    if (!userId) return []; // or empty array
+
     const sessions = await db.query.workoutSessions.findMany({
-        where: (sessions, { isNotNull }) => isNotNull(sessions.endTime),
-        orderBy: (sessions, { desc }) => [desc(sessions.startTime)],
+        orderBy: [desc(workoutSessions.startTime)],
+        where: and(
+            ne(workoutSessions.duration, 0), // Only finished workouts? Or filter by endTime?
+            // Actually, we should probably filter out empty sessions or "in progress" ones if desired.
+            // For now, let's just get everything.
+            eq(workoutSessions.userId, userId)
+        ),
         with: {
             sets: {
                 with: {
-                    exercise: true,
+                    exercise: true
                 },
                 orderBy: (sets, { asc }) => [asc(sets.setNumber)],
             },
@@ -191,20 +224,25 @@ export async function getWorkoutHistory(): Promise<WorkoutHistoryItem[]> {
     });
 }
 
-// NEW: Get active session details including pre-filled sets
+// Need session details for resume functionality
 export async function getSessionDetails(sessionId: number) {
+    const { userId } = await auth();
+    if (!userId) return null;
+
     const session = await db.query.workoutSessions.findFirst({
-        where: eq(workoutSessions.id, sessionId),
+        where: and(
+            eq(workoutSessions.id, sessionId),
+            eq(workoutSessions.userId, userId)
+        ),
         with: {
             sets: {
                 with: {
                     exercise: true
                 },
-                orderBy: (sets, { asc }) => [asc(sets.id)] // order by insertion usually preserves routine order
+                orderBy: (sets, { asc }) => [asc(sets.setNumber)]
             }
         }
     });
-
     return session;
 }
 
