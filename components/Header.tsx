@@ -13,11 +13,14 @@ export default function Header() {
                     <UserButton afterSignOutUrl="/" />
                 </SignedIn>
                 <SignedOut>
-                    <SignInButton mode="modal">
-                        <button className="bg-primary text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-primary/90 transition-colors">
-                            Sign In
-                        </button>
-                    </SignInButton>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">Guest Mode</span>
+                        <SignInButton mode="modal">
+                            <button className="bg-primary text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-primary/90 transition-colors">
+                                Sign In to Save
+                            </button>
+                        </SignInButton>
+                    </div>
                 </SignedOut>
             </div>
         </header>

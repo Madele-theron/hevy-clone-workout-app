@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { routines, routineExercises, exercises } from "@/drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 
 export type RoutineData = {
     name: string;
@@ -19,7 +19,7 @@ export type RoutineData = {
 };
 
 export async function createRoutine(data: RoutineData) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     // 1. Create Routine
@@ -52,7 +52,7 @@ export async function createRoutine(data: RoutineData) {
 }
 
 export async function getRoutines() {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) return [];
 
     const allRoutines = await db.query.routines.findMany({
@@ -71,7 +71,7 @@ export async function getRoutines() {
 }
 
 export async function deleteRoutine(id: number) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     await db.delete(routines).where(

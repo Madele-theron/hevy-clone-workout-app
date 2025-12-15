@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { exercises, sets, workoutSessions, routines, routineExercises } from "@/drizzle/schema";
 import { eq, asc, desc, and, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth"; // Updated Import
 
 export async function getExercises() {
     return await db.select().from(exercises);
@@ -16,7 +16,7 @@ export async function getPreviousExerciseStats(exerciseId: number) {
     // We want the most recent *session* first, then the best set? 
     // Usually "Previous" means what I did last time.
     // Let's filter for isCompleted = true
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) return null;
 
     const lastSet = await db.query.sets.findFirst({
@@ -39,7 +39,7 @@ export async function getPreviousExerciseStats(exerciseId: number) {
 
 export async function startNewWorkout(routineId?: number) {
     try {
-        const { userId } = await auth();
+        const userId = await getUserId();
         if (!userId) throw new Error("Unauthorized");
 
         // 1. Create Session
@@ -105,7 +105,7 @@ export type SetData = {
 };
 
 export async function logSet(sessionId: number, exerciseId: number, data: SetData) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     await db.insert(sets).values({
@@ -122,7 +122,7 @@ export async function logSet(sessionId: number, exerciseId: number, data: SetDat
 }
 
 export async function finishWorkout(sessionId: number, clientDuration?: number) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     const now = new Date();
@@ -173,7 +173,7 @@ export type WorkoutHistoryItem = {
 };
 
 export async function getWorkoutHistory(): Promise<WorkoutHistoryItem[]> {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) return []; // or empty array
 
     const sessions = await db.query.workoutSessions.findMany({
@@ -231,7 +231,7 @@ export async function getWorkoutHistory(): Promise<WorkoutHistoryItem[]> {
 
 // Need session details for resume functionality
 export async function getSessionDetails(sessionId: number) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) return null;
 
     const session = await db.query.workoutSessions.findFirst({

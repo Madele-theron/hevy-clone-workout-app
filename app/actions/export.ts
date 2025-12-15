@@ -1,9 +1,15 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { getUserId } from "@/lib/auth";
+import { eq } from "drizzle-orm";
+import { sets } from "@/drizzle/schema";
 
 export async function exportData() {
+    const userId = await getUserId();
+
     const allSets = await db.query.sets.findMany({
+        where: eq(sets.userId, userId),
         with: {
             session: true,
             exercise: true,
