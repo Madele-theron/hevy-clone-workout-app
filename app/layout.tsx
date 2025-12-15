@@ -28,18 +28,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body className={`${inter.className} bg-background text-white`}>
-        <ClerkProvider>
-          {/* Header is global now, or kept inside MainLayout? 
-                User requested Header. MainLayout usually wraps content.
-                Let's put Header above content.
-            */}
-          <Header />
-          <MainLayout>{children}</MainLayout>
-        </ClerkProvider>
-      </body>
-    </html>
-  );
-}
+  import { WorkoutProvider } from "@/contexts/WorkoutContext";
+  // ...
+  export default function RootLayout({
+    children,
+  }: Readonly<{
+    children: React.ReactNode;
+  }>) {
+    return (
+      <html lang="en">
+        <body className={`${inter.className} bg-background text-white`}>
+          <ClerkProvider>
+            <WorkoutProvider>
+              <Header />
+              <MainLayout>{children}</MainLayout>
+            </WorkoutProvider>
+          </ClerkProvider>
+        </body>
+      </html>
+    );
+  }

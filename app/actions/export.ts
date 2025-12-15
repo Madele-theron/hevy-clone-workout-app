@@ -25,12 +25,14 @@ export async function exportData() {
         "Weight (kg)",
         "Reps",
         "Is Completed",
+        "Notes", // Added
     ].join(",");
 
     // CSV Rows
     const rows = allSets.map((set) => {
         const date = set.session.startTime.toISOString().split("T")[0];
         const cleanName = set.exercise.name.replace(/,/g, ""); // Handle commas
+        const cleanNote = (set.note || "").replace(/,/g, " "); // Handle commas in notes
         return [
             date,
             cleanName,
@@ -38,6 +40,7 @@ export async function exportData() {
             set.weightKg || 0,
             set.reps || 0,
             set.isCompleted ? "Yes" : "No",
+            cleanNote, // Added
         ].join(",");
     });
 
