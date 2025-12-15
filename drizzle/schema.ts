@@ -54,6 +54,7 @@ export const sets = pgTable("sets", {
     weightKg: doublePrecision("weight_kg"),
     timeInSeconds: integer("time_in_seconds"),
     isCompleted: boolean("is_completed").default(false).notNull(),
+    note: text("note"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

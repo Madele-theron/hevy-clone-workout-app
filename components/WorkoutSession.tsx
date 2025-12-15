@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { getExercises, startNewWorkout, logSet, finishWorkout, getSessionDetails, getPreviousExerciseStats } from "@/app/actions/workout";
+import { getExercises, startNewWorkout, logSet, finishWorkout, getSessionDetails, getPreviousExerciseStats, updateSet } from "@/app/actions/workout";
 import RestTimer from "./RestTimer";
 import Button from "./Button";
-import { Plus, Check, Play, Square, Timer } from "lucide-react";
+import { Plus, Check, Play, Square, Timer, MessageSquare, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Types
@@ -19,6 +19,7 @@ type WorkoutSet = {
     weight: string;
     reps: string;
     isCompleted: boolean;
+    note?: string;
 };
 
 type ActiveExercise = {
@@ -40,6 +41,7 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
     const [activeExercises, setActiveExercises] = useState<ActiveExercise[]>([]);
     const [isTimerOpen, setIsTimerOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [noteModal, setNoteModal] = useState<{ exerciseIndex: number; setIndex: number; note: string } | null>(null);
 
     // Timer State
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -94,7 +96,8 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                                 setNumber: set.setNumber,
                                 weight: set.weightKg ? set.weightKg.toString() : "",
                                 reps: set.reps ? set.reps.toString() : "",
-                                isCompleted: set.isCompleted
+                                isCompleted: set.isCompleted,
+                                note: set.note || ""
                             });
                         });
 
@@ -172,6 +175,31 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
         setActiveExercises(updatedExercises);
     };
 
+    const saveNote = async () => {
+        if (!noteModal || !sessionId) return;
+        const { exerciseIndex, setIndex, note } = noteModal;
+
+        // Update local state
+        handleUpdateSet(exerciseIndex, setIndex, "note", note);
+
+        try {
+            const exercise = activeExercises[exerciseIndex];
+            const set = exercise.sets[setIndex];
+
+            // If set is completed, attempt update in DB
+            if (set.isCompleted) {
+                await updateSet(sessionId, exercise.exerciseId, set.setNumber, {
+                    isCompleted: true,
+                    note: note
+                });
+            }
+        } catch (e) {
+            console.error("Failed to save note to DB", e);
+        }
+
+        setNoteModal(null);
+    };
+
     const handleCompleteSet = async (exerciseIndex: number, setIndex: number) => {
         if (!sessionId) return;
 
@@ -192,6 +220,7 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                     reps: Number(set.reps) || 0,
                     weightKg: Number(set.weight) || 0,
                     isCompleted: true,
+                    note: set.note // Include note in logSet
                 });
             } catch (error) {
                 console.error("Failed to log set:", error);
@@ -323,10 +352,16 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                                         className="w-full h-11 min-h-[44px] bg-gray-800 rounded text-center text-lg font-bold text-white focus:ring-2 focus:ring-primary outline-none"
                                     />
                                 </div>
-                                <div className="col-span-2">
+                                <div className="col-span-2 flex gap-1 justify-end">
+                                    <button
+                                        onClick={() => setNoteModal({ exerciseIndex: exIndex, setIndex, note: set.note || "" })}
+                                        className={`w-8 h-11 rounded-lg flex items-center justify-center transition-colors ${set.note ? "text-blue-400" : "text-gray-600 hover:text-gray-400"}`}
+                                    >
+                                        <MessageSquare size={16} fill={set.note ? "currentColor" : "none"} />
+                                    </button>
                                     <button
                                         onClick={() => handleCompleteSet(exIndex, setIndex)}
-                                        className={`w-full h-11 rounded-xl flex items-center justify-center transition-all ${set.isCompleted
+                                        className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${set.isCompleted
                                             ? "bg-green-500 text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                                             : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
                                             }`}
@@ -367,6 +402,25 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
             </div>
 
             <RestTimer isOpen={isTimerOpen} onClose={() => setIsTimerOpen(false)} />
+
+            {noteModal && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+                    <div className="bg-surface border border-gray-700 rounded-xl p-4 w-full max-w-sm space-y-4 shadow-2xl">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-white">Add Note</h3>
+                            <button onClick={() => setNoteModal(null)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+                        </div>
+                        <textarea
+                            className="w-full bg-gray-900 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary outline-none min-h-[100px] text-white placeholder:text-gray-500"
+                            placeholder="RPE, feelings, weight info..."
+                            value={noteModal.note}
+                            onChange={(e) => setNoteModal({ ...noteModal, note: e.target.value })}
+                            autoFocus
+                        />
+                        <Button onClick={saveNote} className="w-full">Save Note</Button>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
