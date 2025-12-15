@@ -4,6 +4,7 @@ import "./globals.css";
 import MainLayout from "@/components/MainLayout";
 import { ClerkProvider } from "@clerk/nextjs";
 import Header from "@/components/Header";
+import { WorkoutProvider } from "@/contexts/WorkoutContext";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,23 +29,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  import { WorkoutProvider } from "@/contexts/WorkoutContext";
-  // ...
-  export default function RootLayout({
-    children,
-  }: Readonly<{
-    children: React.ReactNode;
-  }>) {
-    return (
-      <html lang="en">
-        <body className={`${inter.className} bg-background text-white`}>
-          <ClerkProvider>
-            <WorkoutProvider>
-              <Header />
-              <MainLayout>{children}</MainLayout>
-            </WorkoutProvider>
-          </ClerkProvider>
-        </body>
-      </html>
-    );
-  }
+  return (
+    <html lang="en">
+      <body className={`${inter.className} bg-background text-white`}>
+        <ClerkProvider>
+          <WorkoutProvider>
+            <Header />
+            <MainLayout>{children}</MainLayout>
+          </WorkoutProvider>
+        </ClerkProvider>
+      </body>
+    </html>
+  );
+}
