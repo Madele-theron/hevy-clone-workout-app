@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "seed:routines": "tsx scripts/seed_routines.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.2",
