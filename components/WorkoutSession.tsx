@@ -144,49 +144,30 @@ export default function WorkoutSession({ initialSessionId }: WorkoutSessionProps
                                         />
                                     )}
                                 </div>
-                                <div className="col-span-2 flex gap-1 justify-end">
-                                    <button
-                                        onClick={() => removeSet(exIndex, setIndex)}
-                                        className="w-8 h-11 rounded-lg flex items-center justify-center text-red-400 hover:text-red-300 transition-colors"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                <div className="col-span-2 flex items-center gap-1 justify-center">
                                     <button
                                         onClick={() => completeSet(exIndex, setIndex)}
-                                        className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${set.isCompleted
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${set.isCompleted
                                             ? "bg-green-500 text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                                             : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
                                             }`}
                                     >
-                                        {set.isCompleted ? <Check size={24} /> : <Square size={20} />}
+                                        {set.isCompleted ? <Check size={20} /> : <Square size={18} />}
                                     </button>
-                                    {/* Note buttom pushed out or integrated? 
-                                        User asked for Trash. Space is tight.
-                                        "Swipe/Delete Sets" implies visible action.
-                                        I replaced MessageSquare with Trash.
-                                        Where did Note go? 
-                                        I should keep Note.
-                                        Space is 2 cols.
-                                        Maybe Stack them? Or smaller icons?
-                                        Or: Note is critical for "Notes Export". 
-                                        I will put Note button back, and squeeze them.
-                                        Col-span-2 is tight for 3 buttons.
-                                        I'll increase checks column or reduce inputs?
-                                        Inputs are 3 cols.
-                                        Let's try to fit 3 icons in col-span-2 if small?
-                                        Or make rows taller?
-                                        Actually, I'll put Trash on the far left or make it a "long press"?
-                                        No, "Touch-friendly Delete button".
-                                        I'll put Trash next to Reps, or replace "Prev"?
-                                        No.
-                                        I'll make the actions column wider?
-                                        Grid 12.
-                                        Set: 1
-                                        Prev: 3 -> 2
-                                        Kg: 3
-                                        Reps: 3
-                                        Actions: 2 -> 3
-                                    */}
+                                    <button
+                                        onClick={() => setNoteModal({ exerciseIndex: exIndex, setIndex, note: set.note || "" })}
+                                        className="w-8 h-10 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-400 transition-colors"
+                                        title="Add Note"
+                                    >
+                                        <MessageSquare size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => removeSet(exIndex, setIndex)}
+                                        className="w-8 h-10 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
+                                        title="Delete Set"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 </div>
                             </div>
                         ))}

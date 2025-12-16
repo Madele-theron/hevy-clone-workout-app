@@ -7,19 +7,21 @@ import Button from "./Button";
 type Exercise = {
     id: number;
     name: string;
+    type?: string;
     notes?: string | null;
 };
 
 interface ExerciseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    exercise?: Exercise; // If present, we are editing
-    onSave: (data: { name: string; notes?: string }) => Promise<void>;
+    exercise?: Exercise;
+    onSave: (data: { name: string; type?: string; notes?: string }) => Promise<void>;
     onDelete?: (id: number) => Promise<void>;
 }
 
 export default function ExerciseModal({ isOpen, onClose, exercise, onSave, onDelete }: ExerciseModalProps) {
     const [name, setName] = useState("");
+    const [type, setType] = useState("strength");
     const [notes, setNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,9 +29,11 @@ export default function ExerciseModal({ isOpen, onClose, exercise, onSave, onDel
         if (isOpen) {
             if (exercise) {
                 setName(exercise.name);
+                setType(exercise.type || "strength");
                 setNotes(exercise.notes || "");
             } else {
                 setName("");
+                setType("strength");
                 setNotes("");
             }
         }
@@ -42,7 +46,7 @@ export default function ExerciseModal({ isOpen, onClose, exercise, onSave, onDel
 
         setIsSubmitting(true);
         try {
-            await onSave({ name, notes });
+            await onSave({ name, type, notes });
             onClose();
         } catch (e) {
             console.error(e);
@@ -90,6 +94,34 @@ export default function ExerciseModal({ isOpen, onClose, exercise, onSave, onDel
                             className="w-full bg-gray-800 p-3 rounded-lg text-white font-bold text-sm focus:ring-2 focus:ring-primary outline-none"
                             autoFocus
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2 font-medium">Tracking Type</label>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setType("strength")}
+                                className={`flex-1 p-3 rounded-lg border-2 transition-all ${type === "strength"
+                                        ? "border-primary bg-primary/10 text-primary"
+                                        : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
+                                    }`}
+                            >
+                                <div className="font-bold text-sm">Reps</div>
+                                <div className="text-xs opacity-75">Weight × Reps</div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setType("duration")}
+                                className={`flex-1 p-3 rounded-lg border-2 transition-all ${type === "duration"
+                                        ? "border-primary bg-primary/10 text-primary"
+                                        : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
+                                    }`}
+                            >
+                                <div className="font-bold text-sm">Duration</div>
+                                <div className="text-xs opacity-75">Time-based</div>
+                            </button>
+                        </div>
                     </div>
 
                     <div>

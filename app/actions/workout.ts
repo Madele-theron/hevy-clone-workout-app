@@ -323,10 +323,10 @@ export async function getSessionDetails(sessionId: number) {
 }
 
 // NEW: Exercise Management Actions
-export async function createExercise(data: { name: string; notes?: string }) {
+export async function createExercise(data: { name: string; type?: string; notes?: string }) {
     const [newEx] = await db.insert(exercises).values({
         name: data.name,
-        type: "strength", // Default
+        type: data.type || "strength", // Default to strength if not provided
         notes: data.notes,
     }).returning();
 
