@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 export type Exercise = {
     id: number;
     name: string;
-    type: string;
     type: string; // "strength" | "duration"
 };
 

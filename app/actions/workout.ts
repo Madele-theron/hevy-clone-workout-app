@@ -369,3 +369,22 @@ export async function deleteSet(sessionId: number, exerciseId: number, setNumber
 
     revalidatePath('/workout');
 }
+
+export async function deleteWorkout(sessionId: number) {
+    const userId = await getUserId();
+    if (!userId) throw new Error("Unauthorized");
+
+    // Manually cascade delete sets first
+    await db.delete(sets).where(and(
+        eq(sets.sessionId, sessionId),
+        eq(sets.userId, userId)
+    ));
+
+    await db.delete(workoutSessions).where(and(
+        eq(workoutSessions.id, sessionId),
+        eq(workoutSessions.userId, userId)
+    ));
+
+    revalidatePath('/history');
+    revalidatePath('/workout');
+}
