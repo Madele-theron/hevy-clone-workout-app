@@ -388,3 +388,92 @@ export async function deleteWorkout(sessionId: number) {
     revalidatePath('/history');
     revalidatePath('/workout');
 }
+
+export async function repeatWorkout(sessionId: number) {
+    const userId = await getUserId();
+    if (!userId) throw new Error("Unauthorized");
+
+    // Get the original session details
+    const originalSession = await getSessionDetails(sessionId);
+    if (!originalSession) throw new Error("Session not found");
+
+    // Create a new workout session
+    const [newSession] = await db
+        .insert(workoutSessions)
+        .values({
+            userId,
+            startTime: new Date(),
+            notes: "Repeated from previous workout",
+        })
+        .returning({ id: workoutSessions.id });
+
+    // Copy all exercises and sets structure
+    const setsToInsert = [];
+    for (const set of originalSession.sets) {
+        setsToInsert.push({
+            userId,
+            sessionId: newSession.id,
+            exerciseId: set.exerciseId,
+            setNumber: set.setNumber,
+            reps: 0,
+            weightKg: set.weightKg || 0,
+            isCompleted: false,
+        });
+    }
+
+    if (setsToInsert.length > 0) {
+        await db.insert(sets).values(setsToInsert);
+    }
+
+    revalidatePath('/workout');
+    return newSession.id;
+}
+
+export async function saveSessionAsRoutine(sessionId: number, routineName: string) {
+    const userId = await getUserId();
+    if (!userId) throw new Error("Unauthorized");
+
+    if (!routineName.trim()) throw new Error("Routine name required");
+
+    const session = await getSessionDetails(sessionId);
+    if (!session) throw new Error("Session not found");
+
+    const [newRoutine] = await db
+        .insert(routines)
+        .values({
+            userId,
+            name: routineName,
+            notes: `Created from workout on ${new Date(session.startTime).toLocaleDateString()}`,
+        })
+        .returning({ id: routines.id });
+
+    const exerciseMap = new Map<number, { exerciseId: number; sets: typeof session.sets }>();
+    
+    session.sets.forEach(set => {
+        if (!exerciseMap.has(set.exerciseId)) {
+            exerciseMap.set(set.exerciseId, { exerciseId: set.exerciseId, sets: [] });
+        }
+        exerciseMap.get(set.exerciseId)!.sets.push(set);
+    });
+
+    let order = 0;
+    for (const [exerciseId, data] of exerciseMap) {
+        const avgReps = Math.round(
+            data.sets.reduce((sum, s) => sum + (s.reps || 0), 0) / data.sets.length
+        );
+        const avgWeight = data.sets.reduce((sum, s) => sum + (s.weightKg || 0), 0) / data.sets.length;
+
+        await db.insert(routineExercises).values({
+            userId,
+            routineId: newRoutine.id,
+            exerciseId: data.exerciseId,
+            order: order++,
+            targetSets: data.sets.length,
+            targetReps: avgReps,
+            targetWeight: avgWeight,
+        });
+    }
+
+    revalidatePath('/routines');
+    return newRoutine.id;
+}
