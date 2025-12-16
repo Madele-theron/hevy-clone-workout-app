@@ -37,18 +37,19 @@ export async function getPreviousExerciseStats(exerciseId: number) {
     };
 }
 
-export async function startNewWorkout(routineId?: number) {
+export async function startNewWorkout(routineId?: number, routineName?: string) {
     try {
         const userId = await getUserId();
         if (!userId) throw new Error("Unauthorized");
 
-        // 1. Create Session
+        // 1. Create Session with routine name if starting from routine
         const [session] = await db
             .insert(workoutSessions)
             .values({
                 userId,
+                name: routineName || null, // Store the routine name
                 startTime: new Date(),
-                notes: routineId ? "Started from Routine" : undefined, // Could fetch routine name if desired
+                notes: routineId ? "Started from Routine" : undefined,
             })
             .returning({ id: workoutSessions.id });
 
@@ -242,6 +243,7 @@ export async function finishWorkout(sessionId: number, clientDuration?: number) 
 
 export type WorkoutHistoryItem = {
     id: number;
+    name: string | null; // Routine name like "Pull Day"
     date: Date;
     duration: number | null;
     volume: number;
@@ -305,6 +307,7 @@ export async function getWorkoutHistory(): Promise<WorkoutHistoryItem[]> {
 
         return {
             id: session.id,
+            name: session.name || null, // Include workout/routine name
             date: session.startTime,
             duration: session.duration,
             volume: totalVolume,

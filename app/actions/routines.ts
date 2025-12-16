@@ -83,3 +83,62 @@ export async function deleteRoutine(id: number) {
     revalidatePath("/routines");
     revalidatePath("/workout");
 }
+
+export async function getRoutineById(id: number) {
+    const userId = await getUserId();
+    if (!userId) return null;
+
+    const routine = await db.query.routines.findFirst({
+        where: and(
+            eq(routines.id, id),
+            eq(routines.userId, userId)
+        ),
+        with: {
+            routineExercises: {
+                with: {
+                    exercise: true
+                },
+                orderBy: (routineExercises, { asc }) => [asc(routineExercises.order)],
+            },
+        },
+    });
+    return routine;
+}
+
+export async function updateRoutine(id: number, data: RoutineData) {
+    const userId = await getUserId();
+    if (!userId) throw new Error("Unauthorized");
+
+    // 1. Update routine name and notes
+    await db.update(routines)
+        .set({
+            name: data.name,
+            notes: data.notes,
+        })
+        .where(and(
+            eq(routines.id, id),
+            eq(routines.userId, userId)
+        ));
+
+    // 2. Delete old exercises (cascade handles this, but we do it explicitly)
+    await db.delete(routineExercises).where(
+        eq(routineExercises.routineId, id)
+    );
+
+    // 3. Insert new exercises
+    if (data.exercises.length > 0) {
+        const routineExercisesData = data.exercises.map((ex) => ({
+            userId,
+            routineId: id,
+            exerciseId: ex.exerciseId,
+            order: ex.order,
+            targetSets: ex.targetSets,
+            targetReps: ex.targetReps,
+            targetWeight: ex.targetWeight,
+        }));
+        await db.insert(routineExercises).values(routineExercisesData);
+    }
+
+    revalidatePath("/routines");
+    revalidatePath("/workout");
+}

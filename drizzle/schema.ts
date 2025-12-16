@@ -27,6 +27,7 @@ export const exercisesRelations = relations(exercises, ({ many }) => ({
 export const workoutSessions = pgTable("workout_sessions", {
     id: serial("id").primaryKey(),
     userId: text("user_id").notNull(), // Added User Ownership
+    name: text("name"), // Routine name like "Pull Day" or null for empty workouts
     startTime: timestamp("start_time").defaultNow().notNull(),
     endTime: timestamp("end_time"),
     duration: integer("duration"), // in seconds
