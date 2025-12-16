@@ -173,9 +173,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
                 sessionData.sets.forEach(set => {
                     if (!grouped.has(set.exerciseId)) {
                         grouped.set(set.exerciseId, {
-                            id: crypto.randomUUID(),
+                            id: Date.now(),
                             exerciseId: set.exerciseId,
                             name: set.exercise.name,
+                            type: set.exercise.type || "strength",
                             sets: [],
                             previousStats: prevStatsMap.get(set.exerciseId)
                         });
@@ -260,8 +261,9 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
             setIsTimerOpen(true);
             try {
                 await logSet(sessionId, exercise.exerciseId, {
-                    reps: Number(set.reps) || 0,
-                    weightKg: Number(set.weight) || 0,
+                    setNumber: set.setNumber,
+                    reps: set.reps,
+                    weightKg: set.weight,
                     isCompleted: true,
                     note: set.note
                 });
@@ -354,6 +356,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
             updateSetLocal,
             completeSet,
             saveNote,
+            removeSet,
             finishCurrentWorkout,
             setTimerOpen: setIsTimerOpen,
             resumeWorkout

@@ -11,7 +11,7 @@ type Routine = {
     routineExercises: {
         exercise: { name: string };
         targetSets: number;
-        targetReps: string;
+        targetReps: number | string;
     }[];
 };
 
