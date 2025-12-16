@@ -106,35 +106,57 @@ export type SetData = {
     note?: string;
 };
 
+// Helper function to parse reps (handles duration format like "1:30" and strings like "10s")
+function parseReps(value: string | number | undefined): number {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'number') return value;
+
+    const str = value.toString().trim();
+    if (str === '') return 0;
+
+    // Handle duration format "M:SS" or "MM:SS"
+    if (str.includes(':')) {
+        const parts = str.split(':');
+        const minutes = parseInt(parts[0]) || 0;
+        const seconds = parseInt(parts[1]) || 0;
+        return minutes * 60 + seconds;
+    }
+
+    // Remove any non-numeric characters except decimal point
+    return parseInt(str.replace(/[^0-9.-]/g, '')) || 0;
+}
+
+function parseWeight(value: string | number | undefined): number {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'number') return value;
+    return parseFloat(value.toString().replace(/[^0-9.-]/g, '')) || 0;
+}
+
 export async function logSet(sessionId: number, exerciseId: number, data: SetData) {
     const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
+    const reps = parseReps(data.reps);
+    const weightKg = parseWeight(data.weightKg);
+
+    // Use upsert to prevent duplicate entries on rapid toggling
     await db.insert(sets).values({
         userId,
         sessionId,
         exerciseId,
-        setNumber: data.setNumber || 0, // Using setNumber from data, assuming strict mode? Wait, SetData type check.
-        weightKg: parseFloat(data.weightKg?.toString() || "0") || 0, // SetData uses weightKg normally? Check type definition.
-        // Wait, look at line 101 definition: 
-        // export type SetData = { reps?: number; weightKg?: number; ... }
-        // BUT my logSet implementation used `setData.reps` as string?
-        // If Type is number, replace function won't exist on number.
-        // I need to update SetData type to allow string input if UI sends string?
-        // UI uses `updateSetLocal` which touches `WorkoutSet` (strings).
-        // But `logSet` action expects `SetData`.
-        // If UI calls `logSet` with strings, the type definition in action needs to match or be lenient.
-        // Current SetData: reps?: number.
-        // UI sends: { ... set } which has reps: string.
-        // So `logSet` argument should basically be `SetData` but allowing strings?
-        // Or I should parse it better.
-        // Let's change SetData type to allow string | number for reps/weightKg?
-        // Or update the call site?
-        // For robustness, I'll update SetData type to `reps: string | number`.
-
-        reps: typeof data.reps === 'string' ? parseInt(data.reps.replace(/s/gi, "")) || 0 : data.reps || 0,
+        setNumber: data.setNumber || 0,
+        weightKg,
+        reps,
         isCompleted: true,
         note: data.note || null,
+    }).onConflictDoUpdate({
+        target: [sets.sessionId, sets.exerciseId, sets.setNumber],
+        set: {
+            reps,
+            weightKg,
+            isCompleted: true,
+            note: data.note || null
+        }
     });
 
     revalidatePath('/workout');
@@ -144,40 +166,32 @@ export async function updateSet(sessionId: number, exerciseId: number, setNumber
     const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
-    // We identify the set by session, exercise, and setNumber (or ideally ID if we had it in UI)
-    // For now, let's assume one entry per setNumber in DB. 
-    // IF the set doesn't exist yet (not logged), this won't work. The UI only calls this if confirmed?
-    // Actually, UI `logSet` creates a new row. The UI needs to know if the set is already in DB.
-    // If we only use `logSet` on completion, then "adding a note" to an uncompleted set creates a dilemma.
-    // Strategy:
-    // 1. If set is NOT completed, we usually don't have a DB row yet (in this app's current logic, except for routine start).
-    // 2. If it WAS started from routine, it HAS a row (isCompleted=false).
-    // 3. If it was added manually in UI, it has NO row until "Complete" is clicked?
-    //    Checking `WorkoutSession`: `handleAddExercise` adds to local state. `addSet` adds to local.
-    //    `handleCompleteSet` calls `logSet`.
-    // So:
-    // - If we add a note to an un-logged set, we just keep it in local state.
-    // - If we add a note to a logged set, we update DB.
-    // - BUT: `logSet` currently *always inserts*. It doesn't update. This means duplicate sets if we toggle!
-    //   (This is a known quirk/bug in the current app logic - `logSet` is stateless insertion).
-    //   FIX: We should really Upsert based on setNumber if possible, or UI needs to track DB IDs.
-    //   For this task: I will duplicate the simple logic:
-    //   `updateSet` will try to update a set if it exists (by session/exercise/setNumber).
-
-    // Safe update payload
-    const updatePayload: any = { ...data };
+    // Build a type-safe update payload - only include validated fields
+    const updatePayload: {
+        reps?: number;
+        weightKg?: number;
+        isCompleted?: boolean;
+        note?: string | null;
+    } = {};
 
     if (data.reps !== undefined) {
-        updatePayload.reps = typeof data.reps === 'string'
-            ? parseInt(data.reps.replace(/s/gi, "")) || 0
-            : data.reps;
+        updatePayload.reps = parseReps(data.reps);
     }
 
     if (data.weightKg !== undefined) {
-        updatePayload.weightKg = typeof data.weightKg === 'string'
-            ? parseFloat(data.weightKg) || 0
-            : data.weightKg;
+        updatePayload.weightKg = parseWeight(data.weightKg);
     }
+
+    if (data.isCompleted !== undefined) {
+        updatePayload.isCompleted = data.isCompleted;
+    }
+
+    if (data.note !== undefined) {
+        updatePayload.note = data.note || null;
+    }
+
+    // Only update if we have valid fields
+    if (Object.keys(updatePayload).length === 0) return;
 
     await db.update(sets)
         .set(updatePayload)
@@ -323,10 +337,10 @@ export async function getSessionDetails(sessionId: number) {
 }
 
 // NEW: Exercise Management Actions
-export async function createExercise(data: { name: string; type?: string; notes?: string }) {
+export async function createExercise(data: { name: string; type?: string; notes?: string }): Promise<typeof exercises.$inferSelect> {
     const [newEx] = await db.insert(exercises).values({
         name: data.name,
-        type: data.type || "strength", // Default to strength if not provided
+        type: data.type || "strength",
         notes: data.notes,
     }).returning();
 
@@ -374,16 +388,20 @@ export async function deleteWorkout(sessionId: number) {
     const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
-    // Manually cascade delete sets first
-    await db.delete(sets).where(and(
-        eq(sets.sessionId, sessionId),
-        eq(sets.userId, userId)
-    ));
+    // Use transaction to ensure atomic deletion - prevents orphaned data
+    await db.transaction(async (tx) => {
+        // Delete sets first (child records)
+        await tx.delete(sets).where(and(
+            eq(sets.sessionId, sessionId),
+            eq(sets.userId, userId)
+        ));
 
-    await db.delete(workoutSessions).where(and(
-        eq(workoutSessions.id, sessionId),
-        eq(workoutSessions.userId, userId)
-    ));
+        // Delete session (parent record)
+        await tx.delete(workoutSessions).where(and(
+            eq(workoutSessions.id, sessionId),
+            eq(workoutSessions.userId, userId)
+        ));
+    });
 
     revalidatePath('/history');
     revalidatePath('/workout');
@@ -415,7 +433,7 @@ export async function repeatWorkout(sessionId: number) {
             sessionId: newSession.id,
             exerciseId: set.exerciseId,
             setNumber: set.setNumber,
-            reps: 0,
+            reps: set.reps || 0,  // Copy original reps as target
             weightKg: set.weightKg || 0,
             isCompleted: false,
         });

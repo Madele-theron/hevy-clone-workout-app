@@ -171,9 +171,15 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
                 }));
 
                 sessionData.sets.forEach(set => {
+                    // Guard against orphaned sets with missing exercises
+                    if (!set.exercise) {
+                        console.warn(`Skipping set for deleted exercise ID: ${set.exerciseId}`);
+                        return;
+                    }
+
                     if (!grouped.has(set.exerciseId)) {
                         grouped.set(set.exerciseId, {
-                            id: Date.now(),
+                            id: Date.now() + Math.random(),
                             exerciseId: set.exerciseId,
                             name: set.exercise.name,
                             type: set.exercise.type || "strength",
@@ -258,7 +264,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         updateSetLocal(exerciseIndex, setIndex, "isCompleted", isCompleted);
 
         if (isCompleted) {
-            setIsTimerOpen(true);
             try {
                 await logSet(sessionId, exercise.exerciseId, {
                     setNumber: set.setNumber,
@@ -267,9 +272,12 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
                     isCompleted: true,
                     note: set.note
                 });
+                setIsTimerOpen(true); // Only open timer on success
             } catch (error) {
                 console.error("Log set failed", error);
-                // Revert? For now keeps simple.
+                // REVERT optimistic update on failure
+                updateSetLocal(exerciseIndex, setIndex, "isCompleted", false);
+                alert("Failed to save set. Please try again.");
             }
         }
     };
@@ -281,15 +289,18 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         const exercise = activeExercises[exerciseIndex];
         const set = exercise.sets[setIndex];
 
-        if (set.isCompleted) {
-            try {
-                // Here we can use updateSet if we exported it from context or just call it directly.
-                // We imported it at top level.
-                await updateSet(sessionId, exercise.exerciseId, set.setNumber, {
-                    isCompleted: true,
-                    note: note
-                });
-            } catch (e) { console.error(e) }
+        // Always try to persist the note to DB
+        // logSet with upsert handles both new and existing rows
+        try {
+            await logSet(sessionId, exercise.exerciseId, {
+                setNumber: set.setNumber,
+                reps: set.reps,
+                weightKg: set.weight,
+                isCompleted: set.isCompleted,
+                note: note
+            });
+        } catch (e) {
+            console.error("Failed to save note", e);
         }
     };
 

@@ -6,6 +6,7 @@ import {
     integer,
     boolean,
     doublePrecision,
+    unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -56,7 +57,10 @@ export const sets = pgTable("sets", {
     isCompleted: boolean("is_completed").default(false).notNull(),
     note: text("note"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+    // Unique constraint for upsert operations - prevents duplicate sets
+    uniqueSetPerSession: unique().on(table.sessionId, table.exerciseId, table.setNumber)
+}));
 
 export const setsRelations = relations(sets, ({ one }) => ({
     session: one(workoutSessions, {
