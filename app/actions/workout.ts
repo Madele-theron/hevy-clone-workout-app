@@ -448,7 +448,7 @@ export async function saveSessionAsRoutine(sessionId: number, routineName: strin
         .returning({ id: routines.id });
 
     const exerciseMap = new Map<number, { exerciseId: number; sets: typeof session.sets }>();
-    
+
     session.sets.forEach(set => {
         if (!exerciseMap.has(set.exerciseId)) {
             exerciseMap.set(set.exerciseId, { exerciseId: set.exerciseId, sets: [] });
@@ -461,7 +461,9 @@ export async function saveSessionAsRoutine(sessionId: number, routineName: strin
         const avgReps = Math.round(
             data.sets.reduce((sum, s) => sum + (s.reps || 0), 0) / data.sets.length
         );
-        const avgWeight = data.sets.reduce((sum, s) => sum + (s.weightKg || 0), 0) / data.sets.length;
+        const avgWeight = Math.round(
+            (data.sets.reduce((sum, s) => sum + (s.weightKg || 0), 0) / data.sets.length) * 100
+        ) / 100; // Round to 2 decimal places
 
         await db.insert(routineExercises).values({
             userId,
